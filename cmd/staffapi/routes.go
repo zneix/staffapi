@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -11,17 +9,6 @@ import (
 )
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9](?:\w{1,24})?$`)
-
-// TmiResponse represents a tmi.twitch.tv response
-type TmiResponse struct {
-	Chatters struct {
-		Broadcaster []string `json:"broadcaster"`
-		VIPs        []string `json:"vips"`
-		Moderators  []string `json:"moderators"`
-		//Staff       []string `json:"staff"` // could be useful(?)
-		Viewers []string `json:"viewers"`
-	} `json:"chatters"`
-}
 
 // handleStaff handles GET /
 func (server *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -37,61 +24,60 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create HTTP request to tmi API
-	tmiURL := fmt.Sprintf("https://tmi.twitch.tv/group/user/%s/chatters", channel)
-	req, err := http.NewRequestWithContext(r.Context(), "GET", tmiURL, http.NoBody)
+	// make a Redis call and get cached tmi chatters (or call TMI API and set response in redis)
+	tmiRoom, err := server.redis.GetTmiRoom(r.Context(), channel)
 	if err != nil {
-		log.Printf("Error while making tmi request: %s\n", err)
+		log.Printf("failed to get tmiRoom: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Execute HTTP request created above
-	res, err := server.httpClient.Do(req)
+	// early-out if there's nothing for us to check
+	if tmiRoom.ChatterCount == 0 {
+		fmt.Fprintf(w, "No staff in %s TriHard\n", channel)
+		return
+	}
+
+	// make a Redis call and get cached values (or call Helix API and set Helix's result in redis)
+
+	// Handle all chatters from tmiResponse
+	staff := make([]string, 0)
+	names := make([]string, 0, tmiRoom.ChatterCount)
+
+	for _, name := range tmiRoom.Chatters.Broadcaster {
+		names = append(names, name)
+	}
+	for _, name := range tmiRoom.Chatters.Moderators {
+		names = append(names, name)
+	}
+	for _, name := range tmiRoom.Chatters.VIPs {
+		names = append(names, name)
+	}
+	for _, name := range tmiRoom.Chatters.Viewers {
+		names = append(names, name)
+	}
+
+	users, err := server.redis.GetTwitchUsers(r.Context(), names)
 	if err != nil {
-		log.Printf("Error while reading tmi's response: %s\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer res.Body.Close()
-
-	// Abort in case of non-200 response (which btw shouldn't happen, but this is Twitch after all...)
-	if res.StatusCode != http.StatusOK {
-		log.Printf("Received status code %d from a tmi request, aborting", res.StatusCode)
+		log.Printf("err getting redis users: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Serialize response body into an instance of TmiResponse
-	body, err := io.ReadAll(res.Body)
-	var tmiResponse TmiResponse
-	if json.Unmarshal(body, &tmiResponse) != nil {
-		log.Printf("Failed to unmarshal tmi request: %s, tmi request body: %s\n", err, string(body))
-		w.WriteHeader(http.StatusInternalServerError)
+	// Check for staff members
+	for _, user := range users {
+		if user.Type == "staff" || user.Type == "admin" {
+			staff = append(staff, user.Login)
+		}
+	}
+
+	// write HTTP response
+	if len(staff) == 0 {
+		fmt.Fprintf(w, "No staff in %s TriHard\n", channel)
 		return
 	}
 
-	// Handle all chatters from tmiResponse and form a slice with their usernames
-	usernames := []string{}
-
-	for _, v := range tmiResponse.Chatters.Broadcaster {
-		usernames = append(usernames, v)
-	}
-	for _, v := range tmiResponse.Chatters.Moderators {
-		usernames = append(usernames, v)
-	}
-	for _, v := range tmiResponse.Chatters.VIPs {
-		usernames = append(usernames, v)
-	}
-	for _, v := range tmiResponse.Chatters.Viewers {
-		usernames = append(usernames, v)
-	}
-	fmt.Printf("Received a list of %d chatters: %s\n", len(usernames), usernames)
-
-	// TODO: make a Redis call and get (or call Helix API and set Helix's result if users aren't cached)
-
-	// just give some response and eShrug
-	fmt.Fprintf(w, "No staff in %s TriHard\n", channel)
+	fmt.Fprintf(w, "monkaS there's %d staff members in chat: %s\n", len(staff), strings.Join(staff, " "))
 }
 
 func registerRoutes(server *Server) {

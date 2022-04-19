@@ -1,3 +1,4 @@
 cmd/staffapi/staffapi
 *.test
 config.yaml
+env.sh

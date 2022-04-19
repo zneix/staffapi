@@ -10,7 +10,7 @@ import (
 
 // Server an instance wrapping everything that is responsible for handling incoming HTTP requests and querying necessary data
 type Server struct {
-	httpClient *http.Client
+	redis      *RedisInstance
 	httpServer *http.Server
 	mux        *chi.Mux
 	address    string
@@ -18,21 +18,16 @@ type Server struct {
 
 // NewServer creates a new Server instance, wrapping http.Server and http.Client which will be used while preparing requests
 func NewServer(address string) *Server {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
 	mux := chi.NewMux()
 
 	httpServer := &http.Server{
 		Addr:         address,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 60 * time.Second,
 	}
 
 	server := &Server{
-		httpClient: client,
 		httpServer: httpServer,
 		mux:        mux,
 		address:    address,
