@@ -24,7 +24,7 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// make a Redis call and get cached tmi chatters (or call TMI API and set response in redis)
+	// Make a Redis call and get cached tmi chatters (or call TMI API and set response in redis)
 	tmiRoom, err := server.redis.GetTmiRoom(r.Context(), channel)
 	if err != nil {
 		log.Printf("failed to get tmiRoom: %v\n", err)
@@ -32,15 +32,13 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// early-out if there's nothing for us to check
+	// Early-out if there's nothing for us to check
 	if tmiRoom.ChatterCount == 0 {
 		fmt.Fprintf(w, "No staff in %s TriHard\n", channel)
 		return
 	}
 
-	// make a Redis call and get cached values (or call Helix API and set Helix's result in redis)
-
-	// Handle all chatters from tmiResponse
+	// Handle all chatters from tmiRoom
 	staff := make([]string, 0)
 	names := make([]string, 0, tmiRoom.ChatterCount)
 
@@ -57,6 +55,7 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 		names = append(names, name)
 	}
 
+	// Make a Redis call and get cached values (or call Helix API and set Helix's result in redis)
 	users, err := server.redis.GetTwitchUsers(r.Context(), names)
 	if err != nil {
 		log.Printf("err getting redis users: %v\n", err)
@@ -71,7 +70,7 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// write HTTP response
+	// Write HTTP response
 	if len(staff) == 0 {
 		fmt.Fprintf(w, "No staff in %s TriHard\n", channel)
 		return

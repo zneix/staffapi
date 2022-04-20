@@ -18,16 +18,14 @@ type Fetcher struct {
 	helixToken    string
 }
 
-type HelixUser struct {
-	ID              string `json:"id"`
-	Login           string `json:"login"`
-	DisplayName     string `json:"display_name"`
-	Type            string `json:"type"`
-	BroadcasterType string `json:"broadcaster_type"`
-}
-
 type GetUsersResponse struct {
-	Users []HelixUser `json:"data"`
+	Users []struct {
+		ID              string `json:"id"`
+		Login           string `json:"login"`
+		DisplayName     string `json:"display_name"`
+		Type            string `json:"type"`
+		BroadcasterType string `json:"broadcaster_type"`
+	} `json:"data"`
 }
 
 func NewFetcher(clientID string, token string) *Fetcher {
