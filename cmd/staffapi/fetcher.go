@@ -43,30 +43,30 @@ func (f *Fetcher) fetchTmiRoom(ctx context.Context, channel string, room *TmiRoo
 	tmiURL := fmt.Sprintf("https://tmi.twitch.tv/group/user/%s/chatters", channel)
 	req, err := http.NewRequestWithContext(ctx, "GET", tmiURL, http.NoBody)
 	if err != nil {
-		return NewErrorf("Failed to create a request to TMI: %s", err)
+		return fmt.Errorf("Failed to create a request to TMI: %w", err)
 	}
 
 	// Execute above HTTP request
 	log.Printf("[Fetch] TMI chatters in #%s\n", channel)
 	res, err := f.httpClient.Do(req)
 	if err != nil {
-		return NewErrorf("Failed reading TMI's response: %s", err)
+		return fmt.Errorf("Failed reading TMI's response: %w", err)
 	}
 	defer res.Body.Close()
 
 	// Abort in case of non-200 response (which btw shouldn't happen, but this is Twitch after all...)
 	if res.StatusCode != http.StatusOK {
-		return NewErrorf("TMI responded with status %d", res.StatusCode)
+		return fmt.Errorf("TMI responded with status %d", res.StatusCode)
 	}
 
 	// Serialize response body into an instance of TmiResponse
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return NewErrorf("Failed to read response body: %s, response body: %v", err, body)
+		return fmt.Errorf("Failed to read response body: %w, response body: %v", err, body)
 	}
 
 	if err = json.Unmarshal(body, room); err != nil {
-		return NewErrorf("Failed to unmarshal tmi request: %s, response body: %s", err, string(body))
+		return fmt.Errorf("Failed to unmarshal tmi request: %w, response body: %s", err, string(body))
 	}
 
 	return nil
