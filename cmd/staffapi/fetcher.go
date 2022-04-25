@@ -89,6 +89,7 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 		wg.Add(1)
 		go func(i int, chunk []string, w chan struct{}, wg *sync.WaitGroup) {
 			defer wg.Done()
+			defer func() { <-w }()
 			helixURL, err := url.Parse("https://api.twitch.tv/helix/users")
 			if err != nil {
 				return
@@ -145,7 +146,6 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 					Type:  user.Type,
 				})
 			}
-			<-w
 		}(i, chunk, ws, wg)
 	}
 	wg.Wait()
