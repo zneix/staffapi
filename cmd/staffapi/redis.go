@@ -113,7 +113,12 @@ func (r *RedisInstance) GetTwitchUsers(ctx context.Context, logins []string) ([]
 }
 
 func (r *RedisInstance) SetTwitchUsers(ctx context.Context, users []*TwitchUser) (err error) {
-	for _, user := range users {
+	for i, user := range users {
+		if user == nil {
+			// wanna debug this weird case somehow
+			log.Printf("User #%d seems to be nil? idk kev", i)
+			continue
+		}
 		xd := r.client.Set(ctx, "user:"+user.Login, user, 3*24*time.Hour)
 		if err = xd.Err(); err != nil {
 			log.Printf(`Error setting "user:%s": %s`, user.Login, err)

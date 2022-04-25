@@ -64,7 +64,11 @@ func (server *Server) handleStaff(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for staff members
-	for _, user := range users {
+	for i, user := range users {
+		if user == nil {
+			log.Printf("routes.go: User #%d seems to be nil? idk kev", i)
+			continue
+		}
 		if user.Type == "staff" || user.Type == "admin" {
 			staff = append(staff, user.Login)
 		}

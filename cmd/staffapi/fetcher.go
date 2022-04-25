@@ -78,7 +78,7 @@ func (f *Fetcher) fetchTmiRoom(ctx context.Context, channel string, room *TmiRoo
 func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*TwitchUser, error) {
 	users := make([]*TwitchUser, 0)
 
-	// TODO: Use some wg magic to make these calls concurrent
+	// Use some wg magic to make these calls concurrent, at most 10 at the same time
 	chunks := ChunkStringSlice(usernames, 100)
 	wg := new(sync.WaitGroup)
 	ws := make(chan struct{}, 10)
@@ -110,7 +110,7 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 			req.Header.Add("Authorization", "Bearer "+f.helixToken)
 
 			// Execute the HTTP request(s)
-			log.Printf("[Fetch] Helix %d users %d/%d\n", len(chunk), i+1, len(chunks))
+			log.Printf("[Fetch] Helix req %d/%d; %d users\n", i+1, len(chunks), len(chunk))
 			res, err := f.httpClient.Do(req)
 			if err != nil {
 				return
@@ -119,7 +119,8 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 
 			// Abort in case of non-200 response
 			if res.StatusCode != http.StatusOK {
-				err = NewErrorf("Helix responded with status %d", res.StatusCode)
+				log.Printf("[Fetch] Helix req %d/%d; got status %d\n", i+1, len(chunks), res.StatusCode)
+				err = fmt.Errorf("Helix responded with status %d", res.StatusCode)
 				return
 			}
 
@@ -134,7 +135,10 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 				return
 			}
 
-			for _, user := range helixUsers.Users {
+			for i, user := range helixUsers.Users {
+				if helixUsers.Users == nil {
+					log.Printf("fetcher.go: User #%d seems to be nil? idk kev", i)
+				}
 				users = append(users, &TwitchUser{
 					Login: user.Login,
 					ID:    user.ID,
