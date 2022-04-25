@@ -76,7 +76,7 @@ func (f *Fetcher) fetchTmiRoom(ctx context.Context, channel string, room *TmiRoo
 
 // fetchTwitchUsers calls Helix's Get Users to get details about users: https://dev.twitch.tv/docs/api/reference#get-users
 func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*TwitchUser, error) {
-	users := []*TwitchUser{}
+	users := make([]*TwitchUser, 0)
 
 	// TODO: Use some wg magic to make these calls concurrent
 	chunks := ChunkStringSlice(usernames, 100)
@@ -128,7 +128,7 @@ func (f *Fetcher) fetchTwitchUsers(ctx context.Context, usernames []string) ([]*
 				return
 			}
 
-			helixUsers := &GetUsersResponse{}
+			helixUsers := new(GetUsersResponse)
 			err = json.Unmarshal(body, helixUsers)
 			if err != nil {
 				return

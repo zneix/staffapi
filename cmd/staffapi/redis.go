@@ -86,7 +86,7 @@ func (r *RedisInstance) GetTwitchUsers(ctx context.Context, logins []string) ([]
 			continue
 		}
 
-		user := &TwitchUser{}
+		user := new(TwitchUser)
 		json.Unmarshal([]byte(v.(string)), user)
 		//log.Printf("redis user #%d: %#v\ntwitch user #%d %#v", i+1, v, i+1, user)
 		users = append(users, user)
@@ -123,7 +123,7 @@ func (r *RedisInstance) SetTwitchUsers(ctx context.Context, users []*TwitchUser)
 }
 
 func (r *RedisInstance) GetTmiRoom(ctx context.Context, channel string) (*TmiRoom, error) {
-	room := &TmiRoom{}
+	room := new(TmiRoom)
 	err := r.client.Get(ctx, "tmi:"+channel).Scan(room)
 
 	if err != nil {
